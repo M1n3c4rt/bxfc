@@ -12,7 +12,7 @@ import Text.Read (readMaybe)
 import qualified Data.HashMap.Strict as HM
 import Data.Bifunctor (second)
 import Data.Maybe (fromJust)
---import Debug.Trace (traceShowId, traceShow)
+import Debug.Trace (traceShowId, traceShow)
 import Data.List (elemIndex)
 
 main :: IO ()
@@ -284,19 +284,19 @@ parseContents cs = HM.fromList final
 isNeighbour :: LineType -> LineType -> Bool
 isNeighbour a b = b `elem` case a of
     Empty -> [Empty,ThinDotted2,ThickDotted2,ThinDotted3,ThickDotted3,ThinDotted4,ThickDotted4]
-    Thin -> [Thin,ThinDotted2,ThinDotted3,ThinDotted4]
+    Thin -> [Thin,Curved,ThinDotted2,ThinDotted3,ThinDotted4]
     Thick -> [Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     Double -> [Double]
-    ThinDotted2 -> [Empty,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
-    ThinDotted3 -> [Empty,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
-    ThinDotted4 -> [Empty,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
+    ThinDotted2 -> [Empty,Curved,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
+    ThinDotted3 -> [Empty,Curved,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
+    ThinDotted4 -> [Empty,Curved,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
     ThickDotted2 -> [Empty,Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     ThickDotted3 -> [Empty,Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     ThickDotted4 -> [Empty,Thick,ThickDotted2,ThickDotted3,ThickDotted4]
-    Curved -> [Curved,Thin]
+    Curved -> [Curved,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
 
-check :: Grid -> Bool
-check grid = not $ HM.null $ HM.filterWithKey helper grid
+check :: Grid -> Grid
+check grid = HM.filterWithKey helper grid
     where helper c = not . all (\(d,a) -> isNeighbour a $ fromJust $ lookup (-d) $ HM.lookupDefault (map (,Empty) [north,east,south,west]) (c+d) grid)
 
 findStart :: Grid -> ((Integer,Integer),(Integer,Integer))
@@ -308,8 +308,9 @@ findStart grid = case filter helper $ HM.toList grid of
         helper (_,xs) = (==1) $ length $ filter (/=Empty) $ map snd xs
 
 run :: Grid -> S.Set Integer -> S.Set Integer
-run a b = if check a then errorWithoutStackTrace "found neighbouring characters with mismatched line types"
-    else let (start,dir) = findStart a in step 0 start dir a b
+run a b = case HM.toList $ check a of
+    [] -> let (start,dir) = findStart a in step 0 start dir a b
+    xs ->  errorWithoutStackTrace $ "found neighbouring characters with mismatched line types at positions: " ++ show (map fst xs)
 
 step :: Integer -> (Integer, Integer) -> (Integer, Integer) -> Grid -> S.Set Integer -> S.Set Integer
 step pointer pos dir grid memory = case nextAction of
@@ -328,7 +329,7 @@ step pointer pos dir grid memory = case nextAction of
         currentCell = HM.lookupDefault (map (,Empty) [north,east,south,west]) pos grid
         nextActions = filter ((/=Empty) . snd) $ filter ((/= -dir) . fst) currentCell
         nextAction = case nextActions of
-            [] -> errorWithoutStackTrace "you should not be seeing this error; something has gone horribly wrong"
+            [] -> errorWithoutStackTrace "you shoudld not be seeing this error; something has gone horribly wrong"
             [x] -> x
             [x,y] -> if pointer `S.member` memory then
                     if elemIndex (fst x) [east,north,west,south] < elemIndex (fst y) [east,north,west,south] then x else y
@@ -338,7 +339,7 @@ step pointer pos dir grid memory = case nextAction of
 
         flipBit x = if x `S.member` memory then S.delete x memory else S.insert x memory
         jump t p d = let next = HM.lookupDefault (map (,Empty) [north,east,south,west]) (p+d) grid in
-            if (==t) $ fromJust $ lookup (-d) next then p+d+d else jump t (p+d) d
+            if (/=Empty) $ fromJust $ lookup d next then p+d+d else jump t (p+d) d
 
 
 instance Num (Integer,Integer) where
