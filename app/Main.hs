@@ -84,7 +84,7 @@ showOutput :: OutputType -> S.Set Integer -> IO ()
 showOutput ot ps = case ot of
     OString -> putStrLn $ map (chr . fromIntegral . toInt . reverse) $ take8s bits
     ONumber -> print $ toInt bits
-    OBits -> putStrLn $ map (\b -> if b then '1' else '0') bits
+    OBits -> putStrLn $ unwords $ map (map (\b -> if b then '1' else '0')) $ take8s bits
     where
         culled = S.filter (>=0) ps
         m = maximum culled
@@ -217,10 +217,10 @@ cellMap = HM.fromList $ map (second (zip [north, east, south, west]))
         ('╉',[Thick,Thin ,Thick,Thick]),
         ('╊',[Thick,Thick,Thick,Thin ]),
         ('╋',[Thick,Thick,Thick,Thick]),
-        ('╌',[ThinDotted2 ,Empty       ,ThinDotted2 ,Empty       ]),
-        ('╍',[ThickDotted2,Empty       ,ThickDotted2,Empty       ]),
-        ('╎',[Empty       ,ThinDotted2 ,Empty       ,ThinDotted2 ]),
-        ('╏',[Empty       ,ThickDotted2,Empty       ,ThickDotted2]),
+        ('╌',[Empty       ,ThinDotted2 ,Empty       ,ThinDotted2 ]),
+        ('╍',[Empty       ,ThickDotted2,Empty       ,ThickDotted2]),
+        ('╎',[ThinDotted2 ,Empty       ,ThinDotted2 ,Empty       ]),
+        ('╏',[ThickDotted2,Empty       ,ThickDotted2,Empty       ]),
         ('═',[Empty ,Double,Empty ,Double]),
         ('║',[Double,Empty ,Double,Empty ]),
         ('╒',[Empty ,Double,Thin  ,Empty ]),
@@ -283,14 +283,14 @@ parseContents cs = HM.fromList final
 
 isNeighbour :: LineType -> LineType -> Bool
 isNeighbour a b = b `elem` case a of
-    Empty -> [Empty,ThinDotted3,ThickDotted3,ThinDotted4,ThickDotted4]
+    Empty -> [Empty,ThinDotted2,ThickDotted2,ThinDotted3,ThickDotted3,ThinDotted4,ThickDotted4]
     Thin -> [Thin,ThinDotted2,ThinDotted3,ThinDotted4]
     Thick -> [Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     Double -> [Double]
-    ThinDotted2 -> [Thin,ThinDotted2,ThinDotted3,ThinDotted4]
+    ThinDotted2 -> [Empty,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
     ThinDotted3 -> [Empty,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
     ThinDotted4 -> [Empty,Thin,ThinDotted2,ThinDotted3,ThinDotted4]
-    ThickDotted2 -> [Thick,ThickDotted2,ThickDotted3,ThickDotted4]
+    ThickDotted2 -> [Empty,Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     ThickDotted3 -> [Empty,Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     ThickDotted4 -> [Empty,Thick,ThickDotted2,ThickDotted3,ThickDotted4]
     Curved -> [Curved,Thin]
@@ -317,11 +317,11 @@ step pointer pos dir grid memory = case nextAction of
     (d,Thin) -> step (pointer-1) (pos+d) d grid memory
     (d,Thick) -> step (pointer+1) (pos+d) d grid memory
     (d,Double) -> step pointer (pos+d) d grid (flipBit pointer)
-    (d,ThinDotted2) -> step pointer (pos+d) d grid memory
-    (d,ThickDotted2) -> step pointer (pos+d) d grid memory
+    (d,ThinDotted2) -> step pointer (jump ThinDotted2 pos d) d grid memory
+    (d,ThickDotted2) -> step pointer (jump ThickDotted2 pos d) d grid memory
     (d,Curved) -> step pointer (pos+d) d grid memory
-    (d,ThinDotted3) -> step pointer (jump ThinDotted3 pos d) d grid memory
-    (d,ThickDotted3) -> step pointer (jump ThickDotted3 pos d) d grid memory
+    (d,ThinDotted3) -> if all (<=pointer) memory then memory else step pointer (jump ThinDotted3 pos d) d grid memory
+    (d,ThickDotted3) -> if all (<=pointer) memory then memory else step pointer (jump ThickDotted3 pos d) d grid memory
     (_,ThinDotted4) -> memory
     (_,ThickDotted4) -> memory
     where
@@ -338,7 +338,7 @@ step pointer pos dir grid memory = case nextAction of
 
         flipBit x = if x `S.member` memory then S.delete x memory else S.insert x memory
         jump t p d = let next = HM.lookupDefault (map (,Empty) [north,east,south,west]) (p+d) grid in
-            if (==t) $ fromJust $ lookup (-d) next then p+d else jump t (p+d) d
+            if (==t) $ fromJust $ lookup (-d) next then p+d+d else jump t (p+d) d
 
 
 instance Num (Integer,Integer) where
