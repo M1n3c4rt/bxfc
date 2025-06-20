@@ -12,7 +12,6 @@ import Text.Read (readMaybe)
 import qualified Data.HashMap.Strict as HM
 import Data.Bifunctor (second)
 import Data.Maybe (fromJust)
-import Debug.Trace (traceShowId, traceShow)
 import Data.List (elemIndex)
 
 main :: IO ()
