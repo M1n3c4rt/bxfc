@@ -30,7 +30,7 @@ Only characters in the unicode block U+25XX (box drawing characters), and the wh
 - Dotted thin lines can only border other dotted thin lines, thin lines, or empty space.
 - Dotted thick lines can only border other dotted thick lines, thick lines, or empty space.
 - Curved characters (╭ ╮ ╯╰) count as having thin lines pointing in two directions and empty space in the other two.
-- Diagonals (╲ ╲ ╳) count as having empty space in all directions.
+- Diagonals (╱ ╲ ╳) count as having empty space in all directions.
 
 ### Shape behaviour
 - Characters having empty space in four directions will never be reached by the instruction pointer.
@@ -68,6 +68,6 @@ WARNING: Any character outside the grid is assumed to be empty space. If the ins
 Similar to input, output is given only after the program finishes running, and the interpreter can choose how to do this.
 
 This interpreter has three modes of output, all of which ignore bits at negative positions:
-- Bytetring (read left to right)
+- Bytestring (read left to right)
 - Number (read right to left with least significant bit at position 0, and displayed in decimal)
 - Bits (displays the raw sequence of bits until the infinitely many trailing zeroes are reached)
